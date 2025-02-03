@@ -1,12 +1,11 @@
+
+const bcrypt = require('bcrypt')
 const User = require('../models/user')
 
 const signUp = (req, res) => {
     res.render('auth/sign-up.ejs',
         { title: 'Sign up', msg: '' })
 }
-
-
-
 
 const addUser = async (req, res) => {
     console.log('request body: ', req.body)
@@ -23,11 +22,53 @@ const addUser = async (req, res) => {
             msg: 'Password and Confirm Password must match.'
         })
     }
+    const hashedPassword = bcrypt.hashSync(req.body.password, 10)
+    req.body.password = hashedPassword
+
     const user = await User.create(req.body)
     console.log('new user: ', user)
+    return res.send(`Thanks for signing up ${user.username}`)
+}
+
+const signInForm = (req, res) => {
+    res.render('auth/sign-in.ejs', {
+        title: 'Sign in',
+        msg: ''
+    })
+}
+
+const signIn = async (req, res) => {
+    const userInDatabase = await User.findOne({ username: req.body.username })
+    if (!userInDatabase) {
+        return res.render('auth/sign-in.ejs', {
+            title: 'Sign in',
+            msg: 'Invalid credentials. Please try again.'
+        })
+    }
+    // CHECKING IF PASSWORD IS CORRECT
+    const validPassword = bcrypt.compareSync(
+        req.body.password,
+        userInDatabase.password
+    )
+    if (!validPassword) {
+        return res.render('auth/sign-in.ejs', {
+            title: 'Sign in',
+            msg: 'Invalid credentials. Please try again.'
+        })
+    }
+
+    req.session.user = {
+        username: userInDatabase.username,
+    }
+    console.log('req.session: ', req.session)
+
+    res.redirect('/')
 
 }
+
 module.exports = {
     signUp,
     addUser,
+    signInForm,
+    signIn,
 }
